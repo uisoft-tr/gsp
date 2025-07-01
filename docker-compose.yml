@@ -1,4 +1,4 @@
-version: '3.8'
+
 
 services:
   db:
@@ -23,9 +23,14 @@ services:
       - DATABASE_URL=postgres://postgres:postgres123@db:5432/sulama_db
     ports:
       - "8001:8000"
+    deploy:
+      resources:
+        limits:
+          memory: 1g
 
   frontend:
     build: ./gsp-frontend
+    working_dir: /app
     volumes:
       - ./gsp-frontend:/app
       - /app/node_modules

@@ -1,5 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from .views import export_to_excel_with_template
 from .views import (
     BolgeViewSet, SulamaViewSet, DepolamaTesisiViewSet, KanalViewSet,
     GunlukSebekeyeAlinanSuMiktariViewSet, GunlukDepolamaTesisiSuMiktariViewSet,
@@ -21,5 +22,6 @@ router.register(r'yillik-urun-detay', YillikUrunDetayViewSet)
 router.register(r'dashboard', DashboardViewSet, basename='dashboard')
 
 urlpatterns = [
+    path("api/excel-export/", export_to_excel_with_template, name="excel_export_with_template"),
     path('', include(router.urls)),
-] 
+]

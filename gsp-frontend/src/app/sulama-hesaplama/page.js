@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { sulamaAPI } from '@/utils/api';
+import { exportToExcelWithTemplate } from '../../utils/excelExport';
 
 export default function SulamaHesaplamaPage() {
     const { user, token } = useAuth();
@@ -427,14 +428,14 @@ export default function SulamaHesaplamaPage() {
                             {/* Sulama Sistemi */}
                             <div>
                                 <label className="block text-sm font-semibold text-blue-800 mb-2">
-                                    Sulama Sistemi *
+                                    Sulama Adı *
                                 </label>
                                 <select
                                     value={formData.sulama}
                                     onChange={(e) => handleFormChange('sulama', e.target.value)}
                                     className="w-full px-3 py-2 text-sm border-2 border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-blue-50 text-blue-900 font-medium transition-all duration-200"
                                 >
-                                    <option value="">Sulama sistemi seçin</option>
+                                    <option value="">Sulama seçin</option>
                                     {sulamalar.map(sulama => (
                                         <option key={sulama.id} value={sulama.id}>
                                             {sulama.isim}
@@ -844,7 +845,9 @@ export default function SulamaHesaplamaPage() {
                 {/* Aksiyon Butonları */}
                 <div className="bg-white rounded-xl shadow-lg border border-blue-200 p-6 mb-8">
                     <div className="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:gap-6 lg:justify-between lg:items-center">
-                       
+                    <button onClick={() => exportToExcelWithTemplate({ formData, tableData, results })}>
+                    Excel'e Aktar
+                    </button>   
                     <button
                                 onClick={exportToExcel}
                                 className="w-full sm:w-auto px-6 py-3 border-2 border-green-600 text-green-700 rounded-lg hover:bg-green-50 transition-all duration-200 flex items-center justify-center font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-sm sm:text-base"

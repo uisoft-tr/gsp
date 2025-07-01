@@ -23,7 +23,7 @@ class Bolge(models.Model):
        
 class Sulama(models.Model):
     bolge = models.ForeignKey(Bolge, on_delete=models.CASCADE, related_name='sulamalar', verbose_name="Bölge")
-    isim = models.CharField(max_length=100, verbose_name="Sulama Sistemi Adı")
+    isim = models.CharField(max_length=100, verbose_name="Sulama  Adi")
     aciklama = models.TextField(null=True, blank=True, verbose_name="Açıklama")
     olusturma_tarihi = models.DateTimeField(auto_now_add=True, verbose_name="Oluşturma Tarihi")
 
@@ -31,8 +31,8 @@ class Sulama(models.Model):
         return f"{self.bolge.isim} - {self.isim}"
     
     class Meta:
-        verbose_name_plural = "Sulama Sistemleri"
-        verbose_name = "Sulama Sistemi"
+        verbose_name_plural = "Sulama "
+        verbose_name = "Sulama Adi"
         unique_together = ['bolge', 'isim']
         ordering = ['bolge__isim', 'isim']
 
@@ -45,7 +45,7 @@ class DepolamaTesisi(models.Model):
     minimum_su_kot = models.FloatField(null=True, blank=True, verbose_name="Minimum Su Kotu (m)")
     maksimum_hacim = models.FloatField(null=True, blank=True, verbose_name="Maksimum Hacim (m³)")
     minimum_hacim = models.FloatField(null=True, blank=True, verbose_name="Minimum Hacim (m³)")
-    sulama = models.ForeignKey(Sulama, on_delete=models.CASCADE, related_name='depolama_tesisleri', verbose_name="Sulama Sistemi")
+    sulama = models.ForeignKey(Sulama, on_delete=models.CASCADE, related_name='depolama_tesisleri', verbose_name="Sulama Adi")
     olusturma_tarihi = models.DateTimeField(auto_now_add=True, verbose_name="Oluşturma Tarihi")
 
     def __str__(self):
@@ -181,12 +181,19 @@ class UrunKategorisi(models.Model):
         ordering = ['isim']
 
 class Urun(models.Model):
-    sulama = models.ForeignKey(Sulama, on_delete=models.CASCADE, related_name='urunler', verbose_name="Sulama Sistemi")
+    sulama = models.ForeignKey(Sulama, on_delete=models.CASCADE, related_name='urunler', verbose_name="Sulama Adi")
     isim = models.CharField(max_length=100, verbose_name="Ürün Adı")
     kategori = models.ManyToManyField(UrunKategorisi, related_name='urunler', blank=True, verbose_name="Kategoriler")
-    baslangic_tarihi = models.DateField(null=True, blank=True, verbose_name="Başlangıç Tarihi")
-    bitis_tarihi = models.DateField(null=True, blank=True, verbose_name="Bitiş Tarihi")
-  
+    baslangic_tarihi = models.FloatField(
+        null=True, blank=True,
+        verbose_name="Başlangıç (Gün.Ay)",
+        help_text="Örn: 5.6 = 5 Haziran"
+    )
+    bitis_tarihi = models.FloatField(
+        null=True, blank=True,
+        verbose_name="Bitiş (Gün.Ay)",
+        help_text="Örn: 20.7 = 20 Temmuz"
+    )
     kar_orani = models.FloatField(null=True, blank=True, verbose_name="Kar Oranı (%)", validators=[MinValueValidator(0), MaxValueValidator(100)])
 
     # Aylık su tüketim katsayıları (Kc değerleri olabilir)
@@ -215,23 +222,25 @@ class Urun(models.Model):
         }
 
     def __str__(self):
-        # Temel ürün adı
         result = self.isim
-        
-        # Tarih bilgilerini ekle (gün.ay formatında)
         if self.baslangic_tarihi and self.bitis_tarihi:
-            baslangic = f"{self.baslangic_tarihi.day}.{self.baslangic_tarihi.month}"
-            bitis = f"{self.bitis_tarihi.day}.{self.bitis_tarihi.month}"
+            baslangic = f"{self.baslangic_tarihi:.2f}"
+            bitis = f"{self.bitis_tarihi:.2f}"
             result += f" {baslangic}/{bitis}"
         elif self.baslangic_tarihi:
-            baslangic = f"{self.baslangic_tarihi.day}.{self.baslangic_tarihi.month}"
+            baslangic = f"{self.baslangic_tarihi:.2f}"
             result += f" {baslangic}"
-            
-        # Kar oranını ekle
         if self.kar_orani is not None:
             result += f" K.A.R : {self.kar_orani:.0f}"
-            
         return result
+
+    class Meta:
+        verbose_name_plural = "Ürünler"
+        verbose_name = "Ürün"
+        unique_together = ['sulama', 'isim']
+        ordering = ['sulama__bolge__isim', 'sulama__isim', 'isim']
+
+
     
     class Meta:
         verbose_name_plural = "Ürünler"
@@ -240,9 +249,9 @@ class Urun(models.Model):
         ordering = ['sulama__bolge__isim', 'sulama__isim', 'isim']
 
 class YillikGenelSuTuketimi(models.Model):
-    """Ana tablo - Yıl ve sulama sistemi başına tek kayıt"""
+    """Ana tablo - Yıl ve sulama  başına tek kayıt"""
     yil = models.IntegerField(verbose_name="Yıl", validators=[MinValueValidator(2000), MaxValueValidator(2050)])
-    sulama = models.ForeignKey(Sulama, on_delete=models.CASCADE, related_name='yillik_genel_su_tuketimi', verbose_name="Sulama Sistemi")
+    sulama = models.ForeignKey(Sulama, on_delete=models.CASCADE, related_name='yillik_genel_su_tuketimi', verbose_name="Sulama Adi")
     ciftlik_randi = models.FloatField(verbose_name="Çiftlik Randı (%)", default=80, validators=[MinValueValidator(0), MaxValueValidator(100)])
     iletim_randi = models.FloatField(verbose_name="İletim Randı (%)", default=85, validators=[MinValueValidator(0), MaxValueValidator(100)])
     olusturma_tarihi = models.DateTimeField(auto_now_add=True, verbose_name="Oluşturma Tarihi")

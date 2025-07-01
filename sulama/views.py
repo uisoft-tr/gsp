@@ -8,6 +8,12 @@ from django.db.models.functions import Extract
 from datetime import datetime, timedelta
 from authentication.permissions import SulamaYetkisiPermission
 from authentication.mixins import SulamaBazliMixin
+import shutil
+from django.http import HttpResponse, JsonResponse
+from openpyxl import load_workbook
+from django.views.decorators.csrf import csrf_exempt
+import json
+import os
 from .models import (
     Bolge, Sulama, DepolamaTesisi, Kanal, 
     GunlukSebekeyeAlinanSuMiktari, GunlukDepolamaTesisiSuMiktari,
@@ -1034,3 +1040,70 @@ class DashboardViewSet(SulamaBazliMixin, viewsets.ViewSet):
                 {'error': f'Dashboard verileri alınırken hata oluştu: {str(e)}'}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+@csrf_exempt
+def export_to_excel_with_template(request):
+    if request.method == "POST":
+        data = json.loads(request.body)
+        formData = data.get("formData", {})
+        tableData = data.get("tableData", [])
+        results = data.get("results", {})
+
+        yil = str(formData.get("yil", "2024"))
+        sulama_adi = formData.get("sulama", "SulamaAdı")
+        kurum_adi = formData.get("kurumAdi", "Kurum")
+        genel_adi = "GenelSulamaPlanlaması"
+
+        # Şablon dosyanın tam yolu:
+        BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        template_path = os.path.join(BASE_DIR, "excel_templates", "Kitap1.xlsx")
+        temp_path = os.path.join(BASE_DIR, "excel_templates", f"temp_{yil}_{sulama_adi}.xlsx")
+
+        shutil.copy(template_path, temp_path)
+        wb = load_workbook(temp_path)
+        ws = wb.active
+
+        ws["A1"] = f"{yil} {kurum_adi} {sulama_adi} {genel_adi}"
+
+        start_row = 4
+        for i, row in enumerate(tableData, start=start_row):
+            ws[f"A{i}"] = row.get("urun", "")
+            ws[f"B{i}"] = row.get("ekim_alani", "")
+            ws[f"C{i}"] = row.get("ekim_orani", "")
+            ur_values = row.get("ur_values", [])
+            for j, val in enumerate(ur_values):
+                col_letter = chr(ord("D") + j)
+                ws[f"{col_letter}{i}"] = val
+            ws[f"P{i}"] = row.get("toplam_ur", "")
+            ws[f"Q{i}"] = row.get("su_tuketimi", "")
+
+        result_labels = [
+            ("NET SU İHTİYACI (hm³)", results.get("net_su_aylik", []), results.get("net_su_toplam", "")),
+            ("ÇİFTLİK SU İHTİYACI (hm³)", results.get("ciftlik_su_aylik", []), results.get("ciftlik_su_toplam", "")),
+            ("BRÜT SU İHTİYACI (hm³)", results.get("brut_su_aylik", []), results.get("brut_su_toplam", "")),
+        ]
+        for offset, (label, aylik, toplam) in enumerate(result_labels):
+            result_row = start_row + len(tableData) + 2 + offset
+            ws[f"A{result_row}"] = label
+            for j, val in enumerate(aylik):
+                col_letter = chr(ord("D") + j)
+                ws[f"{col_letter}{result_row}"] = val
+            ws[f"P{result_row}"] = toplam
+
+        from io import BytesIO
+        output = BytesIO()
+        wb.save(output)
+        wb.close()
+        os.remove(temp_path)
+        output.seek(0)
+
+        filename = f"{yil}_{sulama_adi}_{genel_adi}.xlsx"
+        response = HttpResponse(
+            output.read(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    return JsonResponse({"error": "Invalid request"}, status=400)
