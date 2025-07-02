@@ -184,15 +184,15 @@ class Urun(models.Model):
     sulama = models.ForeignKey(Sulama, on_delete=models.CASCADE, related_name='urunler', verbose_name="Sulama Adi")
     isim = models.CharField(max_length=100, verbose_name="Ürün Adı")
     kategori = models.ManyToManyField(UrunKategorisi, related_name='urunler', blank=True, verbose_name="Kategoriler")
-    baslangic_tarihi = models.FloatField(
+    baslangic_tarihi = models.DateField(
         null=True, blank=True,
-        verbose_name="Başlangıç (Gün.Ay)",
-        help_text="Örn: 5.6 = 5 Haziran"
+        verbose_name="Başlangıç Tarihi",
+        help_text="Ürünün ekiliş tarihi"
     )
-    bitis_tarihi = models.FloatField(
+    bitis_tarihi = models.DateField(
         null=True, blank=True,
-        verbose_name="Bitiş (Gün.Ay)",
-        help_text="Örn: 20.7 = 20 Temmuz"
+        verbose_name="Bitiş Tarihi",
+        help_text="Ürünün hasat tarihi"
     )
     kar_orani = models.FloatField(null=True, blank=True, verbose_name="Kar Oranı (%)", validators=[MinValueValidator(0), MaxValueValidator(100)])
 

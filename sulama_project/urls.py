@@ -34,8 +34,8 @@ def api_root(request):
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/auth/', include('authentication.urls')),
-    path('api/sulama/', include('sulama.urls')),
+    path('auth/', include('authentication.urls')),
+    path('sulama/', include('sulama.urls')),
     path('api/', api_root),
 ]
 
