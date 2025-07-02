@@ -14,7 +14,7 @@ fi
 
 # Eski konteynerları durdur ve temizle
 echo "🔄 Eski konteynerlar temizleniyor..."
-docker-compose -f docker-compose.prod.yml down --remove-orphans
+docker compose -f docker-compose.prod.yml down --remove-orphans
 
 # Volume'leri temizle (opsiyonel - dikkatli kullanın!)
 read -p "⚠️  Volume'leri de temizlemek istiyor musunuz? (y/N): " -n 1 -r
@@ -25,35 +25,35 @@ fi
 
 # Yeni imajları build et
 echo "🔨 Yeni imajlar build ediliyor..."
-docker-compose -f docker-compose.prod.yml build --no-cache
+docker compose -f docker-compose.prod.yml build --no-cache
 
 # Konteynerları başlat
 echo "▶️  Konteynerlar başlatılıyor..."
-docker-compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml up -d
 
 # Database migration'larını çalıştır
 echo "📊 Database migration'ları uygulanıyor..."
-docker-compose -f docker-compose.prod.yml exec -T web python manage.py migrate
+docker compose -f docker-compose.prod.yml exec -T web python manage.py migrate
 
 # Static dosyaları topla
 echo "📁 Static dosyalar toplanıyor..."
-docker-compose -f docker-compose.prod.yml exec -T web python manage.py collectstatic --noinput
+docker compose -f docker-compose.prod.yml exec -T web python manage.py collectstatic --noinput
 
 # Superuser oluştur (opsiyonel)
 read -p "🔑 Superuser oluşturmak istiyor musunuz? (y/N): " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    docker-compose -f docker-compose.prod.yml exec web python manage.py createsuperuser
+    docker compose -f docker-compose.prod.yml exec web python manage.py createsuperuser
 fi
 
 # Konteyner durumlarını kontrol et
 echo "📋 Konteyner durumları:"
-docker-compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml ps
 
 # Health check
 echo "🔍 Health check yapılıyor..."
 sleep 10
-if curl -f http://localhost/admin/ > /dev/null 2>&1; then
+if curl -f http://localhost:88/admin/ > /dev/null 2>&1; then
     echo "✅ Deployment başarılı! Site çalışıyor."
 else
     echo "❌ Deployment hatası! Logları kontrol edin:"
