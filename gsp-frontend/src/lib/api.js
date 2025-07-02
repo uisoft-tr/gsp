@@ -1,5 +1,5 @@
 // GSP API Client
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://89.233.108.78:60';
 
 // HTTP Client sınıfı
 class ApiClient {
