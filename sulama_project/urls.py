@@ -18,7 +18,12 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from django.http import JsonResponse
+from django.conf import settings
+from django.conf.urls.static import static
+# Static files serving in development
 
+
+#add static files serving in development
 def api_root(request):
     """API ana sayfası"""
     return JsonResponse({
@@ -38,4 +43,9 @@ urlpatterns = [
     path('sulama/', include('sulama.urls')),
     path('api/', api_root),
 ]
+# For serving static files in development
+
+if settings.DEBUG:
+    urlpatterns = static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) + urlpatterns
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
