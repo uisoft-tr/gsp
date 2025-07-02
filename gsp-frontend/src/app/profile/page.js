@@ -40,7 +40,7 @@ export default function ProfilePage() {
     try {
       setLoadingHistory(true);
       
-      const response = await fetch('http://localhost:8001/api/auth/login-history/', {
+      const response = await fetch('http://89.233.108.78:60/api/auth/login-history/', {
         method: 'GET',
         headers: {
           'Authorization': `Token ${localStorage.getItem('authToken')}`,
@@ -92,7 +92,7 @@ export default function ProfilePage() {
       setIsLoading(true);
 
       // API'ye profil güncelleme isteği
-      const response = await fetch('http://localhost:8001/api/auth/profile/', {
+      const response = await fetch('http://89.233.108.78:60/api/auth/profile/', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -133,7 +133,7 @@ export default function ProfilePage() {
     try {
       setIsLoading(true);
 
-      const response = await fetch('http://localhost:8001/api/auth/change-password/', {
+      const response = await fetch('http://89.233.108.78:60/api/auth/change-password/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
