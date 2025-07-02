@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { sulamaAPI } from '@/utils/api';
+import { exportToExcelWithTemplate } from '@/utils/excelExport';
 
 export default function SulamaHesaplamaSorguPage() {
     const { token } = useAuth();
@@ -260,16 +261,32 @@ export default function SulamaHesaplamaSorguPage() {
         });
     };
 
-    // Excel'e aktar
-    const exportToExcel = () => {
-        if (tableData.length === 0) {
-            showErrorToast('Aktarılacak veri bulunamadı');
-            return;
-        }
-        
-        // Excel export işlemi
-        showSuccessToast('Excel dosyası indiriliyor...');
-    };
+          // exportToExcelWithTemplate fonksiyonunu çağır (urunler parametresi ile!)
+        const exportToExcel = () => {
+            if (tableData.length === 0) {
+                showErrorToast('Aktarılacak veri bulunamadı');
+                return;
+            }
+            // Hesaplama sayfasında kullanılan parametrelerle aynı şekilde gönderiyoruz
+            exportToExcelWithTemplate({
+                formData: {
+                    sulama: `${hesaplamaData.yil} - ${hesaplamaData.kurumAdi || hesaplamaData.sulama}`,
+                    kurumAdi: hesaplamaData.kurumAdi,
+                    yil: hesaplamaData.yil,
+                    ciftlikRandi: hesaplamaData.ciftlikRandi,
+                    iletimRandi: hesaplamaData.iletimRandi
+                },
+                tableData,
+                results,
+                urunler: tableData.map(x => ({
+                    id: x.urun,
+                    isim: x.urun_isim
+                })),
+                // sulamalar parametresine ihtiyacın yok (export fonksiyonu sulama adını formData veya urunler'den alacak şekilde yazıldıysa)
+            })
+            .then(() => showSuccessToast('Excel dosyası indiriliyor...'))
+            .catch(err => showErrorToast('Excel aktarımında hata: ' + err.message));
+        };
 
     // Tek seferlik yükleme için ref kullan
     const hasInitiallyLoaded = useRef(false);
@@ -687,4 +704,4 @@ export default function SulamaHesaplamaSorguPage() {
             </div>
         </div>
     );
-} 
+}

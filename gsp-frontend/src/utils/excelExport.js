@@ -1,68 +1,127 @@
+// src/utils/excelExport.js
 import ExcelJS from 'exceljs';
 
-// Helper: Ay kolonları (Nisan-Ekim örnek!)
-const UR_COLUMNS = ['D', 'E', 'F', 'G', 'H', 'I', 'J']; // Gerekirse ay sayısına göre arttır
-const UR_MONTH_INDEXES = [3,4,5,6,7,8,9]; // Nisan=3, Mayıs=4 ... Ekim=9 (örnek)
+const UR_COLUMNS = ['D', 'E', 'F', 'G', 'H', 'I', 'J']; // Nisan-Ekim
+const UR_MONTH_INDEXES = [3, 4, 5, 6, 7, 8, 9]; // Array'de aylar 0-indeksli
 
-export const exportToExcelWithTemplate = async (data) => {
-  // 1. Şablon dosyayı fetch et
-  const response = await fetch('/Kitap1.xlsx'); // public klasöründe olmalı
+export const exportToExcelWithTemplate = async ({ formData, tableData, results, urunler, sulamalar }) => {
+  // Şablon dosyayı fetch et
+  const response = await fetch('/Kitap1.xlsx');
   const arrayBuffer = await response.arrayBuffer();
-
-  // 2. Workbook’u yükle
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(arrayBuffer);
-
-  // 3. Çalışma sayfası
   const ws = workbook.worksheets[0];
 
-  // 4. Değerleri uygun hücrelere yaz
-  ws.getCell('B2').value = data.formData.sulama || '';         // Sadece id var, ismini çekmek istiyorsan ayrıca çek!
-  ws.getCell('G2').value = data.formData.kurumAdi || '';
-  ws.getCell('K2').value = data.formData.yil || '';
+  // SULAMA ADI: ID'den bul, yoksa fallback
+  let sulamaAdi = '';
+  if (sulamalar && Array.isArray(sulamalar)) {
+    const s = sulamalar.find(x => String(x.id) === String(formData.sulama));
+    if (s) sulamaAdi = s.isim;
+  }
+  if (!sulamaAdi) sulamaAdi = formData.sulama?.label || formData.sulama || '';
 
-  // Ürünleri ekle (örnek: A7, A9, A11 ...)
+  // Başlıklar ve girdiler
+  ws.getCell('B2').value = sulamaAdi || '';
+  ws.getCell('G2').value = formData.kurumAdi || '';
+  ws.getCell('K2').value = formData.yil || '';
+  ws.getCell('C41').value = formData.ciftlikRandi || '';
+  ws.getCell('C43').value = formData.iletimRandi || '';
+
+  // Ürünleri ekle (A7, A9, ...)
   let excelRow = 7;
-
-  // **Gelen tablo datasının yapısına göre düzelt!**
-  data.tableData.forEach((row, idx) => {
-    // Ürün adı (id'den label'ı bulmak için urunler listesinden çekebilirsin)
+  tableData.forEach((row) => {
     let urunAdi = row.urun;
-    if (data.urunler) {
-      const urunObj = data.urunler.find(u => String(u.id) === String(row.urun));
-      if (urunObj) urunAdi = urunObj.isim;
+    if (urunler && Array.isArray(urunler)) {
+      const urunObj = urunler.find(u => String(u.id) === String(row.urun));
+      if (urunObj) urunAdi = urunObj.isim || urunObj.label || urunAdi;
     }
     ws.getCell(`A${excelRow}`).value = urunAdi || '';
     ws.getCell(`B${excelRow}`).value = row.ekim_alani || '';
     ws.getCell(`C${excelRow}`).value = row.ekim_orani || '';
 
-    // U-R değerleri Nisan-Ekim için
+    // U-R değerleri (Nisan-Ekim)
     if (Array.isArray(row.ur_values)) {
       UR_COLUMNS.forEach((col, i) => {
-        // D:E:F:G:H:I:J (Nisan-Ekim)
         const urVal = row.ur_values[UR_MONTH_INDEXES[i]] || 0;
         ws.getCell(`${col}${excelRow}`).value = urVal;
-        // Çarpan satırı (alt satır)
         ws.getCell(`${col}${excelRow + 1}`).value = (
           (parseFloat(urVal) || 0) * (parseFloat(row.ekim_orani) || 0) / 100
         ).toFixed(2);
       });
-      // Toplam UR (üst satır) K sütunu
+      // Toplamlar
       const toplam_ur = row.ur_values
-        .slice(UR_MONTH_INDEXES[0], UR_MONTH_INDEXES[UR_MONTH_INDEXES.length-1]+1)
+        .slice(UR_MONTH_INDEXES[0], UR_MONTH_INDEXES[UR_MONTH_INDEXES.length - 1] + 1)
         .reduce((sum, v) => sum + (parseFloat(v) || 0), 0);
       ws.getCell(`K${excelRow}`).value = toplam_ur.toFixed(2);
-      // Toplam UR x Oran (alt satır)
-      ws.getCell(`K${excelRow+1}`).value = ((toplam_ur * (parseFloat(row.ekim_orani) || 0)) / 100).toFixed(2);
+      ws.getCell(`K${excelRow + 1}`).value = ((toplam_ur * (parseFloat(row.ekim_orani) || 0)) / 100).toFixed(2);
     }
 
-    excelRow += 2; // Her ürün 2 satır
+    excelRow += 2;
   });
 
-  // Diğer alanlar örnek
-  ws.getCell('B38').value = data.results.toplam_alan?.toFixed(2) || '';
-  ws.getCell('C38').value = data.results.toplam_oran?.toFixed(2) || '';
-  // ... diğer sonuçlar
+  // Sonuç satırlarını doldur
+  ws.getCell('B38').value = results.toplam_alan?.toFixed(2) || '';
+  ws.getCell('C38').value = results.toplam_oran?.toFixed(2) || '';
+
+  // Aylık toplamlar (D38:K38)
+  if (results.aylik_toplamlari) {
+    UR_COLUMNS.forEach((col, i) => {
+      ws.getCell(`${col}38`).value = results.aylik_toplamlari[i]?.toFixed(2) || '';
+    });
+    ws.getCell('K38').value = results.aylik_toplamlari.reduce((sum, v) => sum + (parseFloat(v) || 0), 0).toFixed(2);
+  }
+
+  // Net Su İhtiyacı (hm³) (D39–J39, K39)
+  if (results.net_su_aylik) {
+    const netAylik = results.net_su_aylik;
+    for (let i = 0; i < 7; i++) {
+      const col = String.fromCharCode('D'.charCodeAt(0) + i);
+      ws.getCell(`${col}39`).value = netAylik[3 + i]?.toFixed(3) || '';
+    }
+    ws.getCell('K39').value = netAylik.slice(3, 10).reduce((a, b) => a + b, 0).toFixed(3);
+  }
+
+  // Çiftlik Su İhtiyacı (hm³) (D41–J41, K41)
+  if (results.ciftlik_su_aylik) {
+    const ciftlikAylik = results.ciftlik_su_aylik;
+    for (let i = 0; i < 7; i++) {
+      const col = String.fromCharCode('D'.charCodeAt(0) + i);
+      ws.getCell(`${col}41`).value = ciftlikAylik[3 + i]?.toFixed(3) || '';
+    }
+    ws.getCell('K41').value = ciftlikAylik.slice(3, 10).reduce((a, b) => a + b, 0).toFixed(3);
+  }
+
+  // Brüt Su İhtiyacı (hm³) (D43–J43, K43)
+  if (results.brut_su_aylik) {
+    const brutAylik = results.brut_su_aylik;
+    for (let i = 0; i < 7; i++) {
+      const col = String.fromCharCode('D'.charCodeAt(0) + i);
+      ws.getCell(`${col}43`).value = brutAylik[3 + i]?.toFixed(3) || '';
+    }
+    ws.getCell('K43').value = brutAylik.slice(3, 10).reduce((a, b) => a + b, 0).toFixed(3);
+  }
+  // 2. Sonra merge yap
+ws.mergeCells('D44:K45');
+
+// 3. Sonra ortala, font ve border işlemleri
+ws.getCell('D44').alignment = { horizontal: 'center', vertical: 'middle' };
+ws.getCell('D44').font = { bold: true, size: 14 };
+
+// 4. Kenarlıklar (her hücreye tek tek ekle)
+const borderStyle = {
+  top: { style: 'thin' }, left: { style: 'thin' },
+  bottom: { style: 'thin' }, right: { style: 'thin' }
+};
+for (let row = 44; row <= 45; row++) {
+  for (let col = 4; col <= 11; col++) {
+    ws.getCell(row, col).border = borderStyle;
+  }
+}
+  // Toplam Sulama Suyu İhtiyacı (hm³) (D44)
+  ws.getCell('D44').value = results.brut_su_toplam?.toFixed(3) || '';
+
+  // Dosya adında Sulama Adı + yıl kullanalım
+  const dosyaAdi = `${sulamaAdi}_${formData.yil}.xlsx`;
 
   // 5. Dosyayı indir
   const buffer = await workbook.xlsx.writeBuffer();
@@ -70,7 +129,7 @@ export const exportToExcelWithTemplate = async (data) => {
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${data.formData.sulama || 'Rapor'}_${data.formData.yil}_Genel_Sulama_Planlaması.xlsx`;
+  a.download = dosyaAdi;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

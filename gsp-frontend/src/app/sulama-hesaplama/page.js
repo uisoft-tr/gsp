@@ -9,10 +9,10 @@ import { exportToExcelWithTemplate } from '../../utils/excelExport';
 export default function SulamaHesaplamaPage() {
     const { user, token } = useAuth();
     const { success: showSuccessToast, error: showErrorToast, warning: showWarningToast } = useToast();
-    
+
     const [loading, setLoading] = useState(true);
     const [formLoading, setFormLoading] = useState(false);
-    
+
     // Form verileri
     const [formData, setFormData] = useState({
         sulama: '',
@@ -25,7 +25,7 @@ export default function SulamaHesaplamaPage() {
     // Data state'leri
     const [sulamalar, setSulamalar] = useState([]);
     const [urunler, setUrunler] = useState([]);
-    
+
     // Tablo verileri
     const [tableData, setTableData] = useState([
         {
@@ -70,10 +70,10 @@ export default function SulamaHesaplamaPage() {
             setLoading(true);
             console.log('Kullanıcı bilgisi:', user);
             console.log('Token:', token);
-            
+
             const data = await sulamaAPI.getSulamalar();
             console.log('API yanıtı:', data);
-            
+
             if (Array.isArray(data)) {
                 setSulamalar(data);
                 console.log('Sulamalar set edildi:', data);
@@ -150,7 +150,7 @@ export default function SulamaHesaplamaPage() {
         const newTableData = tableData.map(row => {
             if (row.id === id) {
                 const updatedRow = { ...row, [field]: value };
-                
+
                 // Ürün seçildiğinde UR değerlerini doldur
                 if (field === 'urun' && value) {
                     const selectedUrun = urunler.find(u => u.id === parseInt(value));
@@ -172,24 +172,24 @@ export default function SulamaHesaplamaPage() {
                         updatedRow.toplam_ur = updatedRow.ur_values.reduce((sum, val) => sum + parseFloat(val || 0), 0);
                     }
                 }
-                
+
                 // UR değeri değiştiğinde toplam hesapla
                 if (field === 'ur_values') {
                     updatedRow.toplam_ur = value.reduce((sum, val) => sum + parseFloat(val || 0), 0);
                 }
-                
+
                 // Su tüketimi hesapla
                 const alan = parseFloat(updatedRow.ekim_alani || 0);
                 const urToplam = parseFloat(updatedRow.toplam_ur || 0);
                 updatedRow.su_tuketimi = alan * urToplam;
-                
+
                 return updatedRow;
             }
             return row;
         });
-        
+
         setTableData(newTableData);
-        
+
         // Önce oranları hesapla, sonra sonuçları hesapla
         calculatePercentages(newTableData);
     };
@@ -197,11 +197,11 @@ export default function SulamaHesaplamaPage() {
     // Yüzdeleri hesapla
     const calculatePercentages = (data) => {
         // Sadece dolu satırların alanlarını topla
-        const validRows = data.filter(row => 
+        const validRows = data.filter(row =>
             row.urun && row.ekim_alani && parseFloat(row.ekim_alani) > 0
         );
         const totalArea = validRows.reduce((sum, row) => sum + parseFloat(row.ekim_alani || 0), 0);
-        
+
         if (totalArea > 0) {
             const updatedData = data.map(row => {
                 // Eğer satır dolu ise oran hesapla, değilse 0 yap
@@ -218,7 +218,7 @@ export default function SulamaHesaplamaPage() {
                 }
             });
             setTableData(updatedData);
-            
+
             // Oranlar güncellendikten sonra sonuçları hesapla
             calculateResults(updatedData);
         }
@@ -232,14 +232,14 @@ export default function SulamaHesaplamaPage() {
         let toplam_oran = 0;
 
         // Sadece dolu satırları hesaba kat (ürün seçilmiş ve alan girilmiş)
-        const validRows = data.filter(row => 
+        const validRows = data.filter(row =>
             row.urun && row.ekim_alani && parseFloat(row.ekim_alani) > 0
         );
 
         validRows.forEach(row => {
             const alan = parseFloat(row.ekim_alani || 0);
             const oran = parseFloat(row.ekim_orani || 0) / 100; // Oranı decimal'e çevir
-            
+
             toplam_alan += alan;
             toplam_oran += parseFloat(row.ekim_orani || 0);
 
@@ -252,11 +252,11 @@ export default function SulamaHesaplamaPage() {
                 // TOPLAM (UR×ORAN) hesaplama
                 const urOranCarpimi = parseFloat(urValue || 0) * oran;
                 aylik_toplamlari[monthIndex] += urOranCarpimi;
-                
+
                 // NET SU İHTİYACI hesaplama: Alan × O ayın UR değeri ÷ 100000
                 const netSuDegeri = (alan * parseFloat(urValue || 0)) / 100000;
                 net_su_aylik[monthIndex] += netSuDegeri;
-                
+
                 if (monthIndex === 0) { // Sadece ilk ay için debug
                     console.log(`  Ay ${monthIndex}: Alan=${alan}, UR=${urValue}, UR×Oran=${urOranCarpimi}, NetSu=${netSuDegeri} (${alan}×${urValue}÷100000)`);
                 }
@@ -264,12 +264,12 @@ export default function SulamaHesaplamaPage() {
         });
 
         const net_su_toplam = net_su_aylik.reduce((sum, val) => sum + val, 0);
-        
+
         // Çiftlik su ihtiyacı - Formül: net_su × 100 ÷ çiftlik_randımanı
         const ciftlikRandi = formData.ciftlikRandi || 80;
         const ciftlik_su_aylik = net_su_aylik.map(val => (val * 100) / ciftlikRandi);
         const ciftlik_su_toplam = ciftlik_su_aylik.reduce((sum, val) => sum + val, 0);
-        
+
         // Brüt su ihtiyacı - Django template'deki randıman formülü  
         const iletimRandi = formData.iletimRandi || 85;
         const brut_su_aylik = ciftlik_su_aylik.map(val => (val * 100) / iletimRandi);
@@ -278,11 +278,11 @@ export default function SulamaHesaplamaPage() {
         // NET SU İHTİYACI zaten hm³ cinsinden (÷100000 ile hesaplandı)
         const net_su_aylik_hm3 = net_su_aylik.map(val => val);
         const net_su_toplam_hm3 = net_su_toplam;
-        
+
         // ÇİFTLİK SU İHTİYACI da zaten hm³ cinsinden (NET SU'dan hesaplandığı için)
         const ciftlik_su_aylik_hm3 = ciftlik_su_aylik.map(val => val);
         const ciftlik_su_toplam_hm3 = ciftlik_su_toplam;
-        
+
         // BRÜT SU İHTİYACI da zaten hm³ cinsinden (ÇİFTLİK SU'dan hesaplandığı için)
         const brut_su_aylik_hm3 = brut_su_aylik.map(val => val);
         const brut_su_toplam_hm3 = brut_su_toplam;
@@ -314,7 +314,7 @@ export default function SulamaHesaplamaPage() {
         }
 
         // En az bir geçerli satır var mı kontrol et
-        const validRows = tableData.filter(row => 
+        const validRows = tableData.filter(row =>
             row.urun && row.ekim_alani && parseFloat(row.ekim_alani) > 0
         );
 
@@ -348,15 +348,15 @@ export default function SulamaHesaplamaPage() {
             console.log('Kaydedilecek veri:', saveData);
 
             const response = await sulamaAPI.saveSulamaHesaplama(saveData);
-            
+
             showSuccessToast(`${response.kayit_sayisi} kayıt başarıyla kaydedildi`);
-            
+
         } catch (error) {
             console.error('Kaydetme hatası:', error);
-            
+
             // API'den gelen hata mesajını göster
             let errorMessage = 'Veriler kaydedilirken hata oluştu';
-            
+
             if (error.message.includes('error')) {
                 try {
                     const errorData = JSON.parse(error.message.split('message: ')[1]);
@@ -367,7 +367,7 @@ export default function SulamaHesaplamaPage() {
                     // JSON parse başarısız olursa default mesajı kullan
                 }
             }
-            
+
             showErrorToast(errorMessage);
         } finally {
             setFormLoading(false);
@@ -408,7 +408,7 @@ export default function SulamaHesaplamaPage() {
                 {/* Başlık */}
                 <div className="mb-8 text-center">
                     <h1 className="text-4xl font-bold text-blue-900 mb-4">Genel Sulama Planlaması</h1>
-                   
+
                 </div>
 
                 {/* Form Kartı */}
@@ -421,11 +421,11 @@ export default function SulamaHesaplamaPage() {
                         </div>
                         <h2 className="text-xl font-bold text-blue-900">Genel Bilgiler</h2>
                     </div>
-                    
+
                     <div className="space-y-4">
-                        {/* Üst Satır: Sulama Sistemi ve Kurum/Kanal Adı */}
+                        {/* Üst Satır: Sulama ve Kurum/Kanal Adı */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Sulama Sistemi */}
+                            {/* Sulama  */}
                             <div>
                                 <label className="block text-sm font-semibold text-blue-800 mb-2">
                                     Sulama Adı *
@@ -551,11 +551,11 @@ export default function SulamaHesaplamaPage() {
                                 <table className="w-full">
                                     <thead className="bg-gradient-to-r from-blue-600 to-blue-700 sticky top-0 z-30">
                                         <tr>
-                                            <th className="sticky left-0 z-40 px-3 py-3 text-left text-xs font-bold text-white uppercase tracking-wider border-r-2 border-blue-400 bg-blue-700" style={{width: '356px'}}>
+                                            <th className="sticky left-0 z-40 px-3 py-3 text-left text-xs font-bold text-white uppercase tracking-wider border-r-2 border-blue-400 bg-blue-700" style={{ width: '356px' }}>
                                                 <div className="flex">
                                                     <div className="w-[180px] text-left">Bitki Türü</div>
-                                                    <div className="w-24 text-center border-l border-blue-400 pl-2">Alan<br/><span className="text-xs opacity-90">(ha)</span></div>
-                                                    <div className="w-20 text-center border-l border-blue-400 pl-2">Oran<br/><span className="text-xs opacity-90">(%)</span></div>
+                                                    <div className="w-24 text-center border-l border-blue-400 pl-2">Alan<br /><span className="text-xs opacity-90">(ha)</span></div>
+                                                    <div className="w-20 text-center border-l border-blue-400 pl-2">Oran<br /><span className="text-xs opacity-90">(%)</span></div>
                                                 </div>
                                             </th>
                                             {monthsShort.map(month => (
@@ -577,7 +577,7 @@ export default function SulamaHesaplamaPage() {
                                                 {/* Ana Satır */}
                                                 <tr className="hover:bg-blue-50 transition-colors duration-150">
                                                     {/* İlk 3 Kolon - Sticky */}
-                                                    <td className="sticky left-0 z-30 px-3 py-3 border-r-2 border-blue-200 bg-white hover:bg-blue-50 transition-colors duration-150" style={{width: '356px'}}>
+                                                    <td className="sticky left-0 z-30 px-3 py-3 border-r-2 border-blue-200 bg-white hover:bg-blue-50 transition-colors duration-150" style={{ width: '356px' }}>
                                                         <div className="flex items-center">
                                                             {/* Bitki Türü */}
                                                             <div className="w-[180px] pr-2">
@@ -594,7 +594,7 @@ export default function SulamaHesaplamaPage() {
                                                                     ))}
                                                                 </select>
                                                             </div>
-                                                            
+
                                                             {/* Alan */}
                                                             <div className="w-24 px-1 border-l border-blue-200">
                                                                 <input
@@ -606,7 +606,7 @@ export default function SulamaHesaplamaPage() {
                                                                     placeholder="0"
                                                                 />
                                                             </div>
-                                                            
+
                                                             {/* Oran */}
                                                             <div className="w-20 px-1 border-l border-blue-200 text-center">
                                                                 <span className="text-xs font-bold text-blue-800 bg-blue-100 px-2 py-1 rounded-full">
@@ -653,11 +653,10 @@ export default function SulamaHesaplamaPage() {
                                                             {/* Edit/Save Button */}
                                                             <button
                                                                 onClick={() => toggleEdit(row.id)}
-                                                                className={`p-1 rounded transition-all duration-200 transform hover:scale-110 ${
-                                                                    editingRow === row.id 
-                                                                        ? 'text-green-600 hover:text-green-800 hover:bg-green-100' 
+                                                                className={`p-1 rounded transition-all duration-200 transform hover:scale-110 ${editingRow === row.id
+                                                                        ? 'text-green-600 hover:text-green-800 hover:bg-green-100'
                                                                         : 'text-blue-600 hover:text-blue-800 hover:bg-blue-100'
-                                                                }`}
+                                                                    }`}
                                                                 title={editingRow === row.id ? "Kaydet" : "Düzenle"}
                                                             >
                                                                 {editingRow === row.id ? (
@@ -689,7 +688,7 @@ export default function SulamaHesaplamaPage() {
 
                                                 {/* U-R x Oran Satırı */}
                                                 <tr className="bg-gray-50 text-gray-700 text-xs">
-                                                    <td className="sticky left-0 z-30 px-3 py-2 text-right font-medium border-r-2 border-blue-200 bg-gray-50" style={{width: '356px'}}>
+                                                    <td className="sticky left-0 z-30 px-3 py-2 text-right font-medium border-r-2 border-blue-200 bg-gray-50" style={{ width: '356px' }}>
                                                         u-r × oran
                                                     </td>
                                                     {/* UR x Oran değerleri */}
@@ -707,7 +706,7 @@ export default function SulamaHesaplamaPage() {
                                                     {/* Toplam UR x Oran - Sticky Right */}
                                                     <td className="sticky right-[60px] z-30 px-2 py-2 text-center border-l-2 border-blue-200 bg-gray-50">
                                                         <span className="bg-green-100 px-2 py-0.5 rounded text-green-800 font-medium">
-                                                            {((parseFloat(row.toplam_ur) * parseFloat(row.ekim_orani || 0)) / 100).toFixed(2)}
+                                                        {(Math.floor(100 * ((parseFloat(row.toplam_ur) * parseFloat(row.ekim_orani || 0)) / 100)) / 100).toFixed(2)}
                                                         </span>
                                                     </td>
                                                     <td className="sticky right-0 z-30 px-2 py-2 border-l-2 border-blue-200 bg-gray-50"></td>
@@ -717,7 +716,7 @@ export default function SulamaHesaplamaPage() {
 
                                         {/* Sonuç Satırları */}
                                         <tr className="bg-gradient-to-r from-blue-100 to-blue-200 font-bold text-sm">
-                                            <td className="sticky left-0 z-30 px-3 py-3 border-r-2 border-blue-300 text-blue-900 bg-blue-100" style={{width: '356px'}}>
+                                            <td className="sticky left-0 z-30 px-3 py-3 border-r-2 border-blue-300 text-blue-900 bg-blue-100" style={{ width: '356px' }}>
                                                 <div className="flex items-center">
                                                     <div className="w-[180px]">TOPLAM (UR×ORAN)</div>
                                                     <div className="w-24 text-center border-l border-blue-300 pl-2">{results.toplam_alan.toFixed(2)} ha</div>
@@ -736,7 +735,7 @@ export default function SulamaHesaplamaPage() {
                                         </tr>
 
                                         <tr className="bg-gradient-to-r from-green-100 to-green-200 font-bold text-sm">
-                                            <td className="sticky left-0 z-30 px-3 py-3 border-r-2 border-green-300 text-green-900 bg-green-100" style={{width: '356px'}}>
+                                            <td className="sticky left-0 z-30 px-3 py-3 border-r-2 border-green-300 text-green-900 bg-green-100" style={{ width: '356px' }}>
                                                 NET SU İHTİYACI (hm³)
                                             </td>
                                             {results.net_su_aylik.map((total, index) => (
@@ -751,7 +750,7 @@ export default function SulamaHesaplamaPage() {
                                         </tr>
 
                                         <tr className="bg-gradient-to-r from-yellow-100 to-yellow-200 font-bold text-sm">
-                                            <td className="sticky left-0 z-30 px-3 py-3 border-r-2 border-yellow-300 text-yellow-900 bg-yellow-100" style={{width: '356px'}}>
+                                            <td className="sticky left-0 z-30 px-3 py-3 border-r-2 border-yellow-300 text-yellow-900 bg-yellow-100" style={{ width: '356px' }}>
                                                 ÇİFTLİK SU İHTİYACI (hm³)
                                             </td>
                                             {results.ciftlik_su_aylik.map((total, index) => (
@@ -766,7 +765,7 @@ export default function SulamaHesaplamaPage() {
                                         </tr>
 
                                         <tr className="bg-gradient-to-r from-red-100 to-red-200 font-bold text-sm">
-                                            <td className="sticky left-0 z-30 px-3 py-3 border-r-2 border-red-300 text-red-900 bg-red-100" style={{width: '356px'}}>
+                                            <td className="sticky left-0 z-30 px-3 py-3 border-r-2 border-red-300 text-red-900 bg-red-100" style={{ width: '356px' }}>
                                                 BRÜT SU İHTİYACI (hm³)
                                             </td>
                                             {results.brut_su_aylik.map((total, index) => (
@@ -782,7 +781,7 @@ export default function SulamaHesaplamaPage() {
 
                                         {/* Toplam Sulama Suyu İhtiyacı */}
                                         <tr className="bg-gradient-to-r from-purple-100 to-purple-200 font-bold text-sm">
-                                            <td className="sticky left-0 z-30 px-3 py-3 text-center border-r-2 border-purple-300 text-purple-900 bg-purple-100" style={{width: '356px'}}>
+                                            <td className="sticky left-0 z-30 px-3 py-3 text-center border-r-2 border-purple-300 text-purple-900 bg-purple-100" style={{ width: '356px' }}>
                                                 TOPLAM SULAMA SUYU İHTİYACI (hm³)
                                             </td>
                                             {/* Boş aylik sütunlar */}
@@ -811,7 +810,7 @@ export default function SulamaHesaplamaPage() {
                         </div>
                         <h2 className="text-xl font-bold text-orange-900">AÇIKLAMA ve ÖNERİLER</h2>
                     </div>
-                    
+
                     <div className="bg-orange-50 rounded-lg p-6">
                         <ul className="space-y-3 text-orange-800">
                             <li className="flex items-start">
@@ -843,23 +842,22 @@ export default function SulamaHesaplamaPage() {
                 </div>
 
                 {/* Aksiyon Butonları */}
+                {/* Aksiyon Butonları */}
                 <div className="bg-white rounded-xl shadow-lg border border-blue-200 p-6 mb-8">
                     <div className="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:gap-6 lg:justify-between lg:items-center">
-                    <button onClick={() => exportToExcelWithTemplate({ formData, tableData, results })}>
-                    Excel'e Aktar
-                    </button>   
-                    <button
-                                onClick={exportToExcel}
-                                className="w-full sm:w-auto px-6 py-3 border-2 border-green-600 text-green-700 rounded-lg hover:bg-green-50 transition-all duration-200 flex items-center justify-center font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-sm sm:text-base"
-                            >
-                                <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                Excel'e Aktar
-                            </button>
+                        {/* Excel'e Aktar Butonu (sol) */}
+                        <button
+                            onClick={() => exportToExcelWithTemplate({ formData, tableData, results, urunler,sulamalar })}
+                            className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 flex items-center justify-center font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-sm sm:text-base"
+                        >
+                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 17l4 4 4-4m0-5v9" />
+                            </svg>
+                            Excel'e Aktar
+                        </button>
+
+                        {/* Kaydet Butonu (sağ) */}
                         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                          
-                            
                             <button
                                 onClick={saveData}
                                 disabled={formLoading}
@@ -888,4 +886,3 @@ export default function SulamaHesaplamaPage() {
         </div>
     );
 }
- 
