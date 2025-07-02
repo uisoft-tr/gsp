@@ -32,9 +32,9 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'), allow_overrides=True)
 SECRET_KEY = env('SECRET_KEY', default="django-insecure-u!q^z40kzls2e^o-uifay!g&6!3duy_i4m-(a+(xy*!y-(vvqp")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env('DEBUG', default=True)
+DEBUG = True
 
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1', '0.0.0.0'])
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
