@@ -14,7 +14,7 @@ mkdir -p $BACKUP_DIR
 
 # Database backup
 echo "📊 Veritabanı backup'ı alınıyor..."
-docker-compose -f $COMPOSE_FILE exec -T db pg_dump -U ${DB_USER} ${DB_NAME} | gzip > $BACKUP_DIR/db_backup_$DATE.sql.gz
+docker compose -f $COMPOSE_FILE exec -T db pg_dump -U ${DB_USER} ${DB_NAME} | gzip > $BACKUP_DIR/db_backup_$DATE.sql.gz
 
 # Media files backup
 echo "📁 Medya dosyaları backup'ı alınıyor..."

@@ -53,7 +53,7 @@ docker compose -f docker-compose.prod.yml ps
 # Health check
 echo "🔍 Health check yapılıyor..."
 sleep 10
-if curl -f http://localhost:88/admin/ > /dev/null 2>&1; then
+if curl -f http://localhost:60/admin/ > /dev/null 2>&1; then
     echo "✅ Deployment başarılı! Site çalışıyor."
 else
     echo "❌ Deployment hatası! Logları kontrol edin:"

@@ -80,7 +80,7 @@ docker-compose -f docker-compose.prod.yml logs -f web
 docker-compose -f docker-compose.prod.yml ps
 
 # Site erişim testi
-curl -I http://yourdomain.com
+curl -I http://yourdomain.com:60
 ```
 
 ## 🔄 Güncellemeler
