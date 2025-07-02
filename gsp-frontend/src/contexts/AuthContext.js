@@ -9,7 +9,7 @@ const AuthContext = createContext({});
 const PUBLIC_ROUTES = ['/login', '/register', '/forgot-password'];
 
 // API Base URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://89.233.108.78:60/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://89.233.108.78:60';
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
